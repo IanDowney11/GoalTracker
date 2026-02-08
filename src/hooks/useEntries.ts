@@ -8,7 +8,9 @@ import {
   putEntry,
   getEntriesInRange,
   getAllEntries,
+  setLastSyncTime,
 } from '@/lib/db';
+import { publishEntry, publishAllEntries, fetchAllEntries } from '@/lib/relay';
 import { useNostr } from './useNostr';
 
 export function useEntries() {
@@ -30,6 +32,11 @@ export function useEntries() {
       };
 
       await putEntry(encrypted);
+
+      // Fire-and-forget relay publish
+      publishEntry(encrypted, privkeyHex, pubkeyHex).catch((err) =>
+        console.error('Relay publish failed:', err)
+      );
     },
     [privkeyHex, pubkeyHex]
   );
@@ -118,11 +125,40 @@ export function useEntries() {
     }
   }, [privkeyHex, pubkeyHex]);
 
+  const backupAll = useCallback(
+    async (onProgress?: (done: number, total: number) => void): Promise<number> => {
+      if (!privkeyHex || !pubkeyHex) throw new Error('Not authenticated');
+
+      const entries = await getAllEntries();
+      const published = await publishAllEntries(entries, privkeyHex, pubkeyHex, onProgress);
+      await setLastSyncTime(Date.now());
+      return published;
+    },
+    [privkeyHex, pubkeyHex]
+  );
+
+  const restoreFromRelays = useCallback(async (): Promise<number> => {
+    if (!pubkeyHex) throw new Error('Not authenticated');
+
+    const remoteEntries = await fetchAllEntries(pubkeyHex);
+    let restored = 0;
+
+    for (const entry of remoteEntries) {
+      await putEntry(entry);
+      restored++;
+    }
+
+    await setLastSyncTime(Date.now());
+    return restored;
+  }, [pubkeyHex]);
+
   return {
     saveEntry,
     loadEntry,
     loadEntriesForMonth,
     loadAllEntries,
+    backupAll,
+    restoreFromRelays,
     loading,
   };
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNostr } from '@/hooks/useNostr';
 import { generateKeyPair } from '@/lib/nostr';
+import { APP_VERSION } from '@/lib/version';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -226,6 +227,7 @@ export default function LoginPage() {
               </p>
             )}
           </form>
+          <p className="text-gray-600 text-xs text-center mt-6">v{APP_VERSION}</p>
         </div>
       </div>
     );
@@ -280,6 +282,7 @@ export default function LoginPage() {
         >
           Reset / Use different key
         </button>
+        <p className="text-gray-600 text-xs text-center mt-6">v{APP_VERSION}</p>
       </div>
     </div>
   );

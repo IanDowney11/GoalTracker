@@ -1,15 +1,26 @@
 import Dexie, { type Table } from 'dexie';
 import { EncryptedEntry, StoredKey } from '@/types';
 
+export interface SyncMeta {
+  id: string; // always "sync"
+  lastSyncTime: number; // unix timestamp ms
+}
+
 class GoalTrackerDB extends Dexie {
   entries!: Table<EncryptedEntry, string>;
   keys!: Table<StoredKey, string>;
+  meta!: Table<SyncMeta, string>;
 
   constructor() {
     super('GoalTrackerDB');
     this.version(1).stores({
       entries: 'date', // primary key is date
       keys: 'id',      // primary key is id (always "primary")
+    });
+    this.version(2).stores({
+      entries: 'date',
+      keys: 'id',
+      meta: 'id',
     });
   }
 }
@@ -51,4 +62,14 @@ export async function getEntriesInRange(
 
 export async function getAllEntries(): Promise<EncryptedEntry[]> {
   return db.entries.toArray();
+}
+
+// Sync metadata operations
+export async function getLastSyncTime(): Promise<number | null> {
+  const meta = await db.meta.get('sync');
+  return meta?.lastSyncTime ?? null;
+}
+
+export async function setLastSyncTime(time: number): Promise<void> {
+  await db.meta.put({ id: 'sync', lastSyncTime: time });
 }

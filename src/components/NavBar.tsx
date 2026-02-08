@@ -19,6 +19,12 @@ export default function NavBar() {
               {npub.slice(0, 12)}...
             </span>
           )}
+          <Link
+            href="/settings"
+            className="text-gray-400 hover:text-white text-sm transition-colors"
+          >
+            Settings
+          </Link>
           <button
             onClick={lock}
             className="text-gray-400 hover:text-white text-sm transition-colors"
