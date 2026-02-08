@@ -8,15 +8,18 @@ import { useEntries } from '@/hooks/useEntries';
 import { DailyEntry } from '@/types';
 import { getDayScore } from '@/lib/scoring';
 import { questions } from '@/lib/questions';
+import { getLastSyncTime } from '@/lib/db';
 import Calendar from '@/components/Calendar';
 import NavBar from '@/components/NavBar';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { isUnlocked, loading: authLoading } = useNostr();
-  const { loadAllEntries } = useEntries();
+  const { loadAllEntries, backupAll } = useEntries();
   const [allEntries, setAllEntries] = useState<DailyEntry[]>([]);
   const [statsLoaded, setStatsLoaded] = useState(false);
+  const [showBackupReminder, setShowBackupReminder] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isUnlocked) {
@@ -32,6 +35,29 @@ export default function DashboardPage() {
       });
     }
   }, [isUnlocked, loadAllEntries]);
+
+  useEffect(() => {
+    if (isUnlocked) {
+      const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+      getLastSyncTime().then((lastSync) => {
+        if (lastSync === null || Date.now() - lastSync > THREE_DAYS_MS) {
+          setShowBackupReminder(true);
+        }
+      });
+    }
+  }, [isUnlocked]);
+
+  const handleBackupNow = async () => {
+    setBackingUp(true);
+    try {
+      await backupAll();
+      setShowBackupReminder(false);
+    } catch (err) {
+      console.error('Backup failed:', err);
+    } finally {
+      setBackingUp(false);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -75,6 +101,32 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-950">
       <NavBar />
+
+      {showBackupReminder && (
+        <div className="max-w-md mx-auto px-4 pt-4">
+          <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-lg p-3 flex items-center justify-between gap-3">
+            <p className="text-yellow-200 text-sm">
+              You haven&apos;t backed up in a while.
+            </p>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleBackupNow}
+                disabled={backingUp}
+                className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-700 text-white text-xs font-medium rounded transition-colors"
+              >
+                {backingUp ? 'Backing up...' : 'Backup Now'}
+              </button>
+              <button
+                onClick={() => setShowBackupReminder(false)}
+                className="text-yellow-500 hover:text-yellow-300 text-lg leading-none"
+                aria-label="Dismiss"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-md mx-auto p-4 space-y-6">
         {/* Quick log today button */}
