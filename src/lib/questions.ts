@@ -38,6 +38,7 @@ export const questions: QuestionDef[] = [
     shortLabel: 'Exercise',
     type: 'boolean',
     goodAnswer: true,
+    allowNA: true,
     streakLabel: 'days exercising',
   },
 ];

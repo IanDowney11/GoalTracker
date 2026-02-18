@@ -6,7 +6,8 @@ export interface DailyEntry {
   followMealPlan: boolean;
   eatSugar: boolean;
   tenThousandSteps: boolean;
-  exercise: boolean;
+  exercise: boolean | null; // null = N/A (rest day)
+  tempGoals?: Record<string, boolean | null>; // null = N/A
 }
 
 export interface EncryptedEntry {
@@ -23,14 +24,24 @@ export interface StoredKey {
 }
 
 export interface QuestionDef {
-  id: keyof Omit<DailyEntry, 'date'>;
+  id: keyof Omit<DailyEntry, 'date' | 'tempGoals'>;
   label: string;
   shortLabel: string;
   type: 'boolean' | 'alcohol';
   /** For boolean questions: does "true" mean a good answer? */
   goodAnswer?: boolean;
+  /** Whether this question supports N/A */
+  allowNA?: boolean;
   /** Streak label, e.g. "days without alcohol" */
   streakLabel: string;
+}
+
+export interface TempGoalDef {
+  id: string;
+  label: string;
+  shortLabel: string;
+  endDate: string; // "YYYY-MM-DD" or "" if not set
+  createdDate: string; // "YYYY-MM-DD"
 }
 
 export interface AuthState {

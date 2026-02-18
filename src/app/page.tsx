@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useNostr } from '@/hooks/useNostr';
 import { useEntries } from '@/hooks/useEntries';
+import { useTempGoals } from '@/hooks/useTempGoals';
 import { DailyEntry } from '@/types';
 import { getDayScore } from '@/lib/scoring';
 import { questions } from '@/lib/questions';
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { isUnlocked, loading: authLoading } = useNostr();
   const { loadAllEntries, backupAll } = useEntries();
+  const { tempGoalDefs, loaded: tempGoalsLoaded } = useTempGoals();
   const [allEntries, setAllEntries] = useState<DailyEntry[]>([]);
   const [statsLoaded, setStatsLoaded] = useState(false);
   const [showBackupReminder, setShowBackupReminder] = useState(false);
@@ -73,7 +75,7 @@ export default function DashboardPage() {
   const daysLogged = allEntries.length;
   const avgScore =
     daysLogged > 0
-      ? allEntries.reduce((sum, e) => sum + getDayScore(e), 0) / daysLogged
+      ? allEntries.reduce((sum, e) => sum + getDayScore(e, tempGoalDefs), 0) / daysLogged
       : 0;
 
   // Current streak of "good" days (score >= 0.6)
@@ -83,7 +85,7 @@ export default function DashboardPage() {
       b.date.localeCompare(a.date)
     );
     for (const entry of sorted) {
-      if (getDayScore(entry) >= 0.6) {
+      if (getDayScore(entry, tempGoalDefs) >= 0.6) {
         currentStreak++;
       } else {
         break;
@@ -97,6 +99,15 @@ export default function DashboardPage() {
   })();
 
   const hasToday = allEntries.some((e) => e.date === todayStr);
+
+  // Active temp goals (for today)
+  const activeTempGoals = tempGoalsLoaded
+    ? tempGoalDefs.filter((def) => {
+        if (todayStr < def.createdDate) return false;
+        if (def.endDate && todayStr > def.endDate) return false;
+        return true;
+      })
+    : [];
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -174,7 +185,16 @@ export default function DashboardPage() {
                 href={`/question/${q.id}`}
                 className="block bg-gray-900 hover:bg-gray-800 rounded-lg p-3 text-white text-sm transition-colors"
               >
-                {q.shortLabel} →
+                {q.shortLabel} &rarr;
+              </Link>
+            ))}
+            {activeTempGoals.map((goal) => (
+              <Link
+                key={goal.id}
+                href={`/question/temp_${goal.id}`}
+                className="block bg-gray-900 hover:bg-gray-800 rounded-lg p-3 text-white text-sm transition-colors"
+              >
+                {goal.shortLabel} <span className="text-gray-500 text-xs">(temp)</span> &rarr;
               </Link>
             ))}
           </div>

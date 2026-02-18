@@ -1,14 +1,15 @@
 'use client';
 
 import { DailyEntry } from '@/types';
-import { getQuestionScore, scoreToColor } from '@/lib/scoring';
+import { getQuestionScore, getTempGoalScore, scoreToColor } from '@/lib/scoring';
 
 interface QuestionChartProps {
-  questionId: keyof Omit<DailyEntry, 'date'>;
+  questionId: keyof Omit<DailyEntry, 'date' | 'tempGoals'>;
   entries: DailyEntry[];
+  tempGoalId?: string;
 }
 
-export default function QuestionChart({ questionId, entries }: QuestionChartProps) {
+export default function QuestionChart({ questionId, entries, tempGoalId }: QuestionChartProps) {
   // Show most recent 30 entries
   const recent = entries.slice(-30);
 
@@ -23,9 +24,33 @@ export default function QuestionChart({ questionId, entries }: QuestionChartProp
   return (
     <div className="space-y-1">
       {recent.map((entry) => {
-        const score = getQuestionScore(questionId, entry);
+        const score = tempGoalId
+          ? getTempGoalScore(tempGoalId, entry)
+          : getQuestionScore(questionId, entry);
+        const label = tempGoalId
+          ? getTempGoalAnswerLabel(tempGoalId, entry)
+          : getAnswerLabel(questionId, entry);
+
+        if (score === null) {
+          // N/A entry
+          return (
+            <div key={entry.date} className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 w-20 shrink-0 font-mono">
+                {formatShortDate(entry.date)}
+              </span>
+              <div className="flex-1 h-6 rounded overflow-hidden bg-gray-800">
+                <div
+                  className="h-full rounded flex items-center px-2 bg-gray-600"
+                  style={{ width: '15%' }}
+                >
+                  <span className="text-xs text-gray-300 font-medium">N/A</span>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         const color = scoreToColor(score);
-        const label = getAnswerLabel(questionId, entry);
 
         return (
           <div key={entry.date} className="flex items-center gap-2">
@@ -53,13 +78,20 @@ export default function QuestionChart({ questionId, entries }: QuestionChartProp
 }
 
 function getAnswerLabel(
-  questionId: keyof Omit<DailyEntry, 'date'>,
+  questionId: keyof Omit<DailyEntry, 'date' | 'tempGoals'>,
   entry: DailyEntry
 ): string {
   if (questionId === 'alcohol') {
     return entry.alcohol.charAt(0).toUpperCase() + entry.alcohol.slice(1);
   }
   const val = entry[questionId];
+  if (val === null) return 'N/A';
+  return val ? 'Yes' : 'No';
+}
+
+function getTempGoalAnswerLabel(goalId: string, entry: DailyEntry): string {
+  const val = entry.tempGoals?.[goalId];
+  if (val === undefined || val === null) return 'N/A';
   return val ? 'Yes' : 'No';
 }
 

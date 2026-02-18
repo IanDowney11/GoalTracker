@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import { EncryptedEntry, StoredKey } from '@/types';
+import { EncryptedEntry, StoredKey, TempGoalDef } from '@/types';
 
 export interface SyncMeta {
   id: string; // always "sync"
@@ -10,6 +10,7 @@ class GoalTrackerDB extends Dexie {
   entries!: Table<EncryptedEntry, string>;
   keys!: Table<StoredKey, string>;
   meta!: Table<SyncMeta, string>;
+  tempGoalDefs!: Table<TempGoalDef, string>;
 
   constructor() {
     super('GoalTrackerDB');
@@ -21,6 +22,12 @@ class GoalTrackerDB extends Dexie {
       entries: 'date',
       keys: 'id',
       meta: 'id',
+    });
+    this.version(3).stores({
+      entries: 'date',
+      keys: 'id',
+      meta: 'id',
+      tempGoalDefs: 'id',
     });
   }
 }
@@ -72,4 +79,17 @@ export async function getLastSyncTime(): Promise<number | null> {
 
 export async function setLastSyncTime(time: number): Promise<void> {
   await db.meta.put({ id: 'sync', lastSyncTime: time });
+}
+
+// Temp goal definition operations
+export async function getTempGoalDefs(): Promise<TempGoalDef[]> {
+  return db.tempGoalDefs.toArray();
+}
+
+export async function putTempGoalDef(def: TempGoalDef): Promise<void> {
+  await db.tempGoalDefs.put(def);
+}
+
+export async function deleteTempGoalDef(id: string): Promise<void> {
+  await db.tempGoalDefs.delete(id);
 }

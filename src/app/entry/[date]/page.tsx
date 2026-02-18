@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { DailyEntry } from '@/types';
 import { useNostr } from '@/hooks/useNostr';
 import { useEntries } from '@/hooks/useEntries';
+import { useTempGoals } from '@/hooks/useTempGoals';
 import SurveyForm from '@/components/SurveyForm';
 
 export default function EntryPage() {
@@ -13,6 +14,7 @@ export default function EntryPage() {
   const date = params.date as string;
   const { isUnlocked, loading: authLoading } = useNostr();
   const { loadEntry, saveEntry } = useEntries();
+  const { tempGoalDefs, loaded: tempGoalsLoaded } = useTempGoals();
   const [existing, setExisting] = useState<DailyEntry | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -31,7 +33,7 @@ export default function EntryPage() {
     }
   }, [isUnlocked, date, loadEntry]);
 
-  if (authLoading || !loaded) {
+  if (authLoading || !loaded || !tempGoalsLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950">
         <p className="text-gray-400">Loading...</p>
@@ -58,12 +60,13 @@ export default function EntryPage() {
           onClick={() => router.push('/')}
           className="text-gray-400 hover:text-white mb-4 text-sm flex items-center gap-1"
         >
-          ← Back to Calendar
+          &larr; Back to Calendar
         </button>
 
         <SurveyForm
           date={date}
           initialEntry={existing}
+          tempGoalDefs={tempGoalDefs}
           onSave={saveEntry}
         />
       </div>

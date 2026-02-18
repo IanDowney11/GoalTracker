@@ -1,6 +1,6 @@
 'use client';
 
-import { DailyEntry } from '@/types';
+import { DailyEntry, TempGoalDef } from '@/types';
 import { getDayScore, scoreToColor } from '@/lib/scoring';
 
 interface DayCellProps {
@@ -8,11 +8,12 @@ interface DayCellProps {
   date: string;
   entry?: DailyEntry;
   isToday: boolean;
+  tempGoalDefs?: TempGoalDef[];
   onClick: () => void;
 }
 
-export default function DayCell({ day, entry, isToday, onClick }: DayCellProps) {
-  const score = entry ? getDayScore(entry) : null;
+export default function DayCell({ day, entry, isToday, tempGoalDefs = [], onClick }: DayCellProps) {
+  const score = entry ? getDayScore(entry, tempGoalDefs) : null;
   const bgColor = score !== null ? scoreToColor(score) : undefined;
 
   return (

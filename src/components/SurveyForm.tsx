@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { DailyEntry, AlcoholLevel } from '@/types';
+import { DailyEntry, AlcoholLevel, TempGoalDef } from '@/types';
 import { questions } from '@/lib/questions';
-import { getDayScore, scoreToColor } from '@/lib/scoring';
+import { getDayScore, scoreToColor, getActiveTempGoals } from '@/lib/scoring';
 
 interface SurveyFormProps {
   date: string;
   initialEntry?: DailyEntry | null;
+  tempGoalDefs: TempGoalDef[];
   onSave: (entry: DailyEntry) => Promise<void>;
 }
 
@@ -18,7 +19,7 @@ const alcoholLevels: { value: AlcoholLevel; label: string; color: string }[] = [
   { value: 'high', label: 'High', color: 'bg-red-600' },
 ];
 
-export default function SurveyForm({ date, initialEntry, onSave }: SurveyFormProps) {
+export default function SurveyForm({ date, initialEntry, tempGoalDefs, onSave }: SurveyFormProps) {
   const [entry, setEntry] = useState<DailyEntry>(
     initialEntry ?? {
       date,
@@ -32,7 +33,8 @@ export default function SurveyForm({ date, initialEntry, onSave }: SurveyFormPro
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const score = getDayScore(entry);
+  const activeTempGoals = getActiveTempGoals(tempGoalDefs, date);
+  const score = getDayScore(entry, tempGoalDefs);
   const color = scoreToColor(score);
 
   function setAlcohol(level: AlcoholLevel) {
@@ -77,7 +79,7 @@ export default function SurveyForm({ date, initialEntry, onSave }: SurveyFormPro
         </span>
       </div>
 
-      {/* Questions */}
+      {/* Core Questions */}
       <div className="space-y-5">
         {questions.map((q) => {
           if (q.type === 'alcohol') {
@@ -103,23 +105,22 @@ export default function SurveyForm({ date, initialEntry, onSave }: SurveyFormPro
             );
           }
 
-          // Boolean question
-          const field = q.id as keyof Omit<DailyEntry, 'date' | 'alcohol'>;
-          const value = entry[field] as boolean;
-          // "Yes" is the good answer when goodAnswer === true
+          // Boolean question (with optional N/A)
+          const field = q.id as keyof Omit<DailyEntry, 'date' | 'alcohol' | 'tempGoals'>;
+          const value = entry[field];
           const yesIsGood = q.goodAnswer === true;
 
           return (
             <div key={q.id}>
               <p className="text-gray-200 mb-2">{q.label}</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className={`grid gap-2 ${q.allowNA ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <button
                   onClick={() => {
                     setEntry((prev) => ({ ...prev, [field]: true }));
                     setSaved(false);
                   }}
                   className={`py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                    value
+                    value === true
                       ? yesIsGood
                         ? 'bg-green-600 text-white ring-2 ring-white/30'
                         : 'bg-red-600 text-white ring-2 ring-white/30'
@@ -134,7 +135,7 @@ export default function SurveyForm({ date, initialEntry, onSave }: SurveyFormPro
                     setSaved(false);
                   }}
                   className={`py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                    !value
+                    value === false
                       ? !yesIsGood
                         ? 'bg-green-600 text-white ring-2 ring-white/30'
                         : 'bg-red-600 text-white ring-2 ring-white/30'
@@ -143,11 +144,93 @@ export default function SurveyForm({ date, initialEntry, onSave }: SurveyFormPro
                 >
                   No
                 </button>
+                {q.allowNA && (
+                  <button
+                    onClick={() => {
+                      setEntry((prev) => ({ ...prev, [field]: null }));
+                      setSaved(false);
+                    }}
+                    className={`py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                      value === null
+                        ? 'bg-gray-500 text-white ring-2 ring-white/30'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    N/A
+                  </button>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Temporary Goals */}
+      {activeTempGoals.length > 0 && (
+        <div className="space-y-5">
+          <h3 className="text-sm font-medium text-gray-400 border-t border-gray-800 pt-4">
+            Temporary Goals
+          </h3>
+          {activeTempGoals.map((goal) => {
+            const val = entry.tempGoals?.[goal.id] ?? null;
+            return (
+              <div key={goal.id}>
+                <p className="text-gray-200 mb-2">{goal.label}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => {
+                      setEntry((prev) => ({
+                        ...prev,
+                        tempGoals: { ...prev.tempGoals, [goal.id]: true },
+                      }));
+                      setSaved(false);
+                    }}
+                    className={`py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                      val === true
+                        ? 'bg-green-600 text-white ring-2 ring-white/30'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEntry((prev) => ({
+                        ...prev,
+                        tempGoals: { ...prev.tempGoals, [goal.id]: false },
+                      }));
+                      setSaved(false);
+                    }}
+                    className={`py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                      val === false
+                        ? 'bg-red-600 text-white ring-2 ring-white/30'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEntry((prev) => ({
+                        ...prev,
+                        tempGoals: { ...prev.tempGoals, [goal.id]: null },
+                      }));
+                      setSaved(false);
+                    }}
+                    className={`py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                      val === null
+                        ? 'bg-gray-500 text-white ring-2 ring-white/30'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    N/A
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Save button */}
       <button

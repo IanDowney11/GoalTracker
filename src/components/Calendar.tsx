@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DailyEntry } from '@/types';
 import { useEntries } from '@/hooks/useEntries';
+import { useTempGoals } from '@/hooks/useTempGoals';
 import DayCell from './DayCell';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -11,6 +12,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export default function Calendar() {
   const router = useRouter();
   const { loadEntriesForMonth } = useEntries();
+  const { tempGoalDefs } = useTempGoals();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [entries, setEntries] = useState<Map<string, DailyEntry>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -65,6 +67,7 @@ export default function Calendar() {
         date={dateStr}
         entry={entry}
         isToday={dateStr === todayStr}
+        tempGoalDefs={tempGoalDefs}
         onClick={() => router.push(`/entry/${dateStr}`)}
       />
     );
@@ -78,14 +81,14 @@ export default function Calendar() {
           onClick={prevMonth}
           className="p-2 text-gray-400 hover:text-white transition-colors"
         >
-          ← Prev
+          &larr; Prev
         </button>
         <h2 className="text-lg font-semibold text-white">{monthName}</h2>
         <button
           onClick={nextMonth}
           className="p-2 text-gray-400 hover:text-white transition-colors"
         >
-          Next →
+          Next &rarr;
         </button>
       </div>
 
